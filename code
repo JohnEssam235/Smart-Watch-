@@ -1,0 +1,175 @@
+
+
+
+
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
+
+unsigned char seconds1 = 0;
+unsigned char seconds2 =0;
+unsigned char minutes1 = 0;
+unsigned char minutes2 =0;
+unsigned char hours1 = 0;
+unsigned char hours2=0;
+
+
+void INT0_func()
+{
+	// mtnsa4 el I-bit
+	DDRD &= ~(1<<PD2);
+	PORTD |= (1<<PD2);  //INTERNAL PULL UP...
+	GICR |= (1<<INT0);
+	MCUCR &= ~(1<<ISC00);  // FALLING EDGE..
+	MCUCR |= (1<<ISC01);
+    SREG |= (1<<7);
+}
+
+void INT1_func()
+{
+	DDRD &= ~(1<<PD3);
+	GICR |=(1<<INT1);
+	MCUCR |= (1<<ISC11) |(1<<ISC10);
+	SREG |= (1<<7);
+
+}
+
+void INT2_func()
+{
+	DDRB &= ~(1<<PB2);
+	PORTB |=(1<<PB2);  //INTERNAL PULL UP...
+	GICR |= (1<<INT2);
+	MCUCSR &= ~ (1<<ISC2);
+	SREG |= (1<<7);
+
+}
+ISR(INT0_vect)
+{
+	// y3ml reset .. fa kolo hyb2a b zeroes...
+
+	seconds1 = 0;
+	seconds2 =0;
+	minutes1 = 0;
+	minutes2 =0;
+	hours1 = 0;
+	hours2=0;
+
+
+}
+ISR(INT1_vect)
+{
+    if(PIND & (1<<PD3))
+	TIMSK &= ~(1<<OCIE1A);
+     // el mafrod hy3Ml pause ... y3ny hw2f el interrupt bta3 el timer ... fa lama aw2f el interrupt bta3 el timer el timer hybatal counting..
+     // register TIMSK....page 109
+
+}
+ISR(INT2_vect)
+{
+   // y3ml resume..............a3ml enable ll timer interrupt.............
+
+	TIMSK |= (1<<OCIE1A);
+
+}
+void timer1_func()
+{
+
+	// PRESCALAR B 1024 ...page 107.....
+
+	TCCR1B |= (1<<CS12) | (1<<CS10) |(1<<WGM12);  // dol mwgoden fe TCCR1B .......
+	TCCR1A |= (1<<FOC1A);                        // page 105
+	TCCR1B &= ~(1<<CS11);
+	TCNT1 = 0;                                    // hbda2 counting mn zero......
+	OCR1A = 1000;                                  // h3d 1000 3ada......
+	TIMSK |= (1<<OCIE1A);                        // h43'l channel A.......enable interrupt
+	SREG |= (1<<7);                              // I-bit
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+
+	seconds1++;
+
+	if(seconds1 == 10)
+	{
+	seconds1 = 0;
+	seconds2++;
+	}
+	if(seconds2 == 6)
+	{
+	seconds2 =0;
+    minutes1++;
+	}
+	if(minutes1 == 10)
+	{
+	  minutes1 =0;
+	  minutes2++;
+	}
+	if(minutes2 == 6)
+	{
+		minutes2=0;
+		hours1++;
+	}
+	if(hours1 == 10)
+	{
+		hours1=0;
+		hours2++;
+	}
+	if(hours2 == 2 && hours1 ==4) // 24 sa3a..
+	{
+		hours2=0;
+	}
+
+
+}
+
+int main(void)
+{
+
+	DDRC |= 0x0F;
+	PORTC |= 0x0F;
+	DDRA |= 0x3F;  // EL ENABLE BTA3 EL 6 BTO3 EL DISPLAY...
+	PORTA |= 0x3F;
+
+
+
+	timer1_func();
+    INT0_func();
+    INT1_func();
+    INT2_func();
+
+
+    while(1)
+    {
+
+    	 PORTA=1;
+    	 PORTC = seconds1;
+    	 _delay_ms(3);
+    	 PORTA = (PORTA<<1);
+         PORTC = seconds2;
+         _delay_ms(3);
+         PORTA = (PORTA<<1);
+         PORTC =minutes1;
+      	_delay_ms(3);
+      	PORTA =(PORTA<<1);
+      	PORTC = minutes2;
+      	_delay_ms(3);
+      	PORTA =(PORTA<<1);
+      	PORTC=hours1;
+      	_delay_ms(3);
+      	PORTA =(PORTA<<1);
+      	PORTC = hours2;
+      	_delay_ms(3);
+
+
+
+
+    }
+}
+
+
+
+
+
+
